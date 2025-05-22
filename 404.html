@@ -12,21 +12,26 @@
             justify-content: center;
             min-height: 100vh;
             margin: 0;
-            background-color: #222222; /* Dark gray background */
-            color: #cccccc; /* Light gray text */
+            background-color: #222222;
+            color: #cccccc;
             text-align: center;
-            transition: background-color 0.3s ease; /* Smooth transition for bg change */
+            transition: opacity 0.5s ease-out, background-color 0.3s ease;
         }
         .message {
             padding: 25px 30px;
-            background-color: #333333; /* Slightly lighter dark gray for message box */
+            background-color: #333333;
             border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4); /* Darker shadow for depth */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
             max-width: 500px;
             width: 90%;
+            opacity: 1;
+            transition: opacity 0.5s ease-out;
+        }
+        .message.fade-out {
+            opacity: 0;
         }
         .message h1 {
-            color: #1DB954; /* Spotify Green */
+            color: #1DB954;
             margin-top: 0;
             margin-bottom: 15px;
             font-size: 1.7em;
@@ -37,7 +42,7 @@
             font-size: 0.95em;
         }
         .message code {
-            background-color: #484848; /* Mid-dark gray for code blocks */
+            background-color: #484848;
             color: #e0e0e0;
             padding: 3px 6px;
             border-radius: 4px;
@@ -45,7 +50,7 @@
             word-break: break-all;
         }
         .message a {
-            color: #1ed760; /* Brighter Spotify Green for links, better contrast */
+            color: #1ed760;
             text-decoration: none;
             font-weight: bold;
         }
@@ -62,13 +67,12 @@
         <h1>Opening Spotify...</h1>
         <p>Please wait, attempting to open the link in your Spotify app.</p>
         <p>If Spotify doesn't open, ensure it's installed and your browser is allowed to open Spotify links.</p>
-        <p>This tab will attempt to close or go blank immediately.</p>
+        <p>This tab will attempt to close or go blank shortly.</p>
     </div>
 
     <div id="notFoundMessage" class="message hidden">
         <h1>404 - Link Not Found or Invalid</h1>
         <p>The Spotify link format appears incorrect or the page was not found.</p>
-        <p>Expected format: <code>.../TYPE/ID</code> (e.g., <code>.../track/TRACK_ID</code>)</p>
         <p>Current path: <code id="currentPathDisplay"></code></p>
         <p><a href="/">Go to homepage</a></p>
     </div>
@@ -80,7 +84,6 @@
             const notFoundMessageDiv = document.getElementById('notFoundMessage');
             const currentPathDisplay = document.getElementById('currentPathDisplay');
 
-            // Regex to capture the TYPE and the ID.
             const pattern = /\/([a-zA-Z]+)\/([a-zA-Z0-9]{22})$/;
             const match = path.match(pattern);
 
@@ -89,34 +92,46 @@
                 const id = match[2];
                 const spotifyUrl = `spotify:${type}:${id}`;
 
-                // Update message content (user might see this for a fraction of a second)
                 initialMessageDiv.innerHTML =
                     '<h1>Opening Spotify...</h1>' +
                     '<p>Redirecting to: <code>' + spotifyUrl + '</code></p>' +
                     '<p>If Spotify doesn\'t open automatically, <a href="' + spotifyUrl + '" target="_blank" rel="noopener noreferrer">click here to try manually</a>.</p>' +
-                    '<p>This tab will now attempt to close or go blank.</p>';
+                    '<p>This tab will attempt to close or go blank shortly.</p>';
 
                 // 1. Initiate the redirect
                 window.location.href = spotifyUrl;
 
-                // 2. Attempt to close the window immediately.
-                // This is very unlikely to work for tabs not opened by script (e.g., direct navigation).
-                window.close();
+                // 2. Set a timeout to attempt closing/blanking.
+                // This delay gives the browser *some* time to process the spotify: URI.
+                // The duration is a compromise.
+                const REDIRECT_ACTION_DELAY_MS = 100; // 1 second. Adjust if needed.
 
-                // 3. If closing failed (which it probably did), blank the page content
-                // and ensure the background remains the desired dark gray.
-                // This happens almost instantly after the redirect is initiated.
-                document.body.innerHTML = '';
-                // The body style from CSS should already set the background,
-                // but explicitly setting it here ensures the final blank state is correct.
-                document.body.style.backgroundColor = '#222222';
+                setTimeout(function() {
+                    // Attempt to close (likely won't work for direct navigation)
+                    // No need to check window.close() return value as it's unreliable.
+                    try {
+                        window.close();
+                    } catch (e) {
+                        // Catch potential errors if window.close() is unsupported or restricted
+                        console.warn("window.close() failed:", e);
+                    }
+
+                    // If the window didn't close (most likely scenario for direct navigation),
+                    // then blank the page content.
+                    // A simple check like 'window.document.body' can determine if the page context is still somewhat valid.
+                    if (window.document && window.document.body) {
+                        initialMessageDiv.classList.add('fade-out'); // Start fade out
+                        setTimeout(function() { // Wait for fade animation
+                           document.body.innerHTML = '';
+                           document.body.style.backgroundColor = '#222222';
+                        }, 450); // Slightly less than CSS transition for opacity
+                    }
+                }, REDIRECT_ACTION_DELAY_MS);
 
             } else {
-                // Show 404 message
                 initialMessageDiv.classList.add('hidden');
                 if(currentPathDisplay) currentPathDisplay.textContent = path;
                 notFoundMessageDiv.classList.remove('hidden');
-                // Ensure body background is dark for 404 messages too (already set by CSS body style)
             }
         })();
     </script>
