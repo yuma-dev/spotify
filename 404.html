@@ -1,28 +1,75 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <title>Redirecting to Spotify...</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background-color: #f0f0f0; text-align: center; color: #333; }
-        .message { padding: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .message h1 { color: #1DB954; margin-top: 0; } /* Spotify Green */
-        .message code { background-color: #e0e0e0; padding: 2px 5px; border-radius: 3px; }
-        .hidden { display: none !important; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #222222; /* Dark gray background */
+            color: #cccccc; /* Light gray text */
+            text-align: center;
+            transition: background-color 0.3s ease; /* Smooth transition for bg change */
+        }
+        .message {
+            padding: 25px 30px;
+            background-color: #333333; /* Slightly lighter dark gray for message box */
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4); /* Darker shadow for depth */
+            max-width: 500px;
+            width: 90%;
+        }
+        .message h1 {
+            color: #1DB954; /* Spotify Green */
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.7em;
+        }
+        .message p {
+            margin-bottom: 12px;
+            line-height: 1.6;
+            font-size: 0.95em;
+        }
+        .message code {
+            background-color: #484848; /* Mid-dark gray for code blocks */
+            color: #e0e0e0;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+            word-break: break-all;
+        }
+        .message a {
+            color: #1ed760; /* Brighter Spotify Green for links, better contrast */
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .message a:hover {
+            text-decoration: underline;
+        }
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
     <div id="initialMessage" class="message">
         <h1>Opening Spotify...</h1>
-        <p>Attempting to open the link in your Spotify app.</p>
-        <p>If Spotify doesn't open, please ensure it's installed and you've allowed your browser to open Spotify links.</p>
-        <p>This tab will attempt to close or go blank after redirecting.</p>
+        <p>Please wait, attempting to open the link in your Spotify app.</p>
+        <p>If Spotify doesn't open, ensure it's installed and your browser is allowed to open Spotify links.</p>
+        <p>This tab will attempt to close or go blank immediately.</p>
     </div>
 
     <div id="notFoundMessage" class="message hidden">
         <h1>404 - Link Not Found or Invalid</h1>
         <p>The Spotify link format appears incorrect or the page was not found.</p>
         <p>Expected format: <code>.../TYPE/ID</code> (e.g., <code>.../track/TRACK_ID</code>)</p>
+        <p>Current path: <code id="currentPathDisplay"></code></p>
         <p><a href="/">Go to homepage</a></p>
     </div>
 
@@ -31,7 +78,9 @@
             const path = window.location.pathname;
             const initialMessageDiv = document.getElementById('initialMessage');
             const notFoundMessageDiv = document.getElementById('notFoundMessage');
+            const currentPathDisplay = document.getElementById('currentPathDisplay');
 
+            // Regex to capture the TYPE and the ID.
             const pattern = /\/([a-zA-Z]+)\/([a-zA-Z0-9]{22})$/;
             const match = path.match(pattern);
 
@@ -40,46 +89,42 @@
                 const id = match[2];
                 const spotifyUrl = `spotify:${type}:${id}`;
 
-                // Update message for the user
+                // Update message content (user might see this for a fraction of a second)
                 initialMessageDiv.innerHTML =
                     '<h1>Opening Spotify...</h1>' +
                     '<p>Redirecting to: <code>' + spotifyUrl + '</code></p>' +
                     '<p>If Spotify doesn\'t open automatically, <a href="' + spotifyUrl + '" target="_blank" rel="noopener noreferrer">click here to try manually</a>.</p>' +
-                    '<p>This tab will attempt to close or go blank shortly.</p>';
+                    '<p>This tab will now attempt to close or go blank.</p>';
 
                 // 1. Initiate the redirect
                 window.location.href = spotifyUrl;
 
-                // 2. After a very short delay, try to close the window.
-                // This delay gives the browser a moment to process the spotify: URI.
-                // This is still very unlikely to work for tabs not opened by script.
-                setTimeout(function() {
-                    // Attempt to close (likely won't work for direct navigation)
-                    window.close();
+                // 2. Attempt to close the window immediately.
+                // This is very unlikely to work for tabs not opened by script (e.g., direct navigation).
+                window.close();
 
-                    // 3. If closing failed (which it probably did), blank the page
-                    // to make the lingering tab less obtrusive.
-                    // We check if 'window.closed' is false, but this property itself
-                    // can be unreliable or not present in all scenarios after a close attempt.
-                    // A simple visual blanking is often the most robust "fallback".
-                    document.body.innerHTML = ''; // Clears all content
-                    // Or, to be absolutely minimal and remove even the flicker of a blank body:
-                    // document.documentElement.innerHTML = '';
-                    // Or, just hide the message div:
-                    // initialMessageDiv.classList.add('hidden');
-                    // document.body.style.backgroundColor = '#fff'; // Make it fully blank
-                }, 500); // 500ms delay
+                // 3. If closing failed (which it probably did), blank the page content
+                // and ensure the background remains the desired dark gray.
+                // This happens almost instantly after the redirect is initiated.
+                document.body.innerHTML = '';
+                // The body style from CSS should already set the background,
+                // but explicitly setting it here ensures the final blank state is correct.
+                document.body.style.backgroundColor = '#222222';
 
             } else {
+                // Show 404 message
                 initialMessageDiv.classList.add('hidden');
+                if(currentPathDisplay) currentPathDisplay.textContent = path;
                 notFoundMessageDiv.classList.remove('hidden');
+                // Ensure body background is dark for 404 messages too (already set by CSS body style)
             }
         })();
     </script>
     <noscript>
         <div class="message">
             <h1>JavaScript Required</h1>
-            <p>This page uses JavaScript to redirect you to Spotify. Please enable JavaScript in your browser.</p>
+            <p>This page uses JavaScript to redirect you to Spotify. Please enable JavaScript in your browser and try again.</p>
+            <p>The expected URL format for Spotify links is: <code>.../TYPE/ID</code></p>
         </div>
     </noscript>
 </body>
