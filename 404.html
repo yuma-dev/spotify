@@ -3,59 +3,88 @@
 <head>
     <meta charset="utf-8">
     <title>Redirecting to Spotify...</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; line-height: 1.6; padding: 20px; text-align: center; color: #333; }
+        h1 { color: #1DB954; } /* Spotify Green */
+        code { background-color: #f0f0f0; padding: 3px 6px; border-radius: 4px; font-family: monospace; }
+        a { color: #1DB954; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .container { max-width: 600px; margin: 50px auto; padding: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Initial content, will be replaced by JavaScript -->
+        <h1>Processing Request</h1>
+        <p>Please wait while we redirect you...</p>
+    </div>
+
     <script type="text/javascript">
         (function() {
-            // Full path, e.g., /your-repo-name/album/5g7VbiVwXeu8lVdj4tpAZ5
-            // Or if your repo is named 'album', it would be /album/5g7VbiVwXeu8lVdj4tpAZ5
+            // Get the full path from the URL.
+            // e.g., on https://username.github.io/repo/track/TRACK_ID, pathname is /repo/track/TRACK_ID
+            // e.g., on https://username.github.io/track/TRACK_ID (if repo is username.github.io), pathname is /track/TRACK_ID
             const path = window.location.pathname;
+            const container = document.querySelector('.container'); // Get the container element
 
-            // Regex to capture the Album ID.
-            // It looks for '/album/' followed by 22 alphanumeric characters (standard Spotify ID length)
-            // at the end of the path.
-            // This works whether your repo is named 'album' or something else.
-            // Example path: /album/5g7VbiVwXeu8lVdj4tpAZ5
-            // Example path: /my-spotify-redirector/album/5g7VbiVwXeu8lVdj4tpAZ5
-            const albumPattern = /\/album\/([a-zA-Z0-9]{22})$/;
-            const match = path.match(albumPattern);
+            // Regex to capture the TYPE (e.g., track, album, artist) and the ID.
+            // It looks for /TYPE/ID at the end of the path.
+            // TYPE: one or more letters.
+            // ID: 22 alphanumeric characters (standard Spotify ID length).
+            const pattern = /\/([a-zA-Z]+)\/([a-zA-Z0-9]{22})$/;
+            const match = path.match(pattern);
 
-            if (match && match[1]) {
-                const albumId = match[1];
-                const spotifyUrl = `spotify:album:${albumId}`;
+            if (match && match[1] && match[2]) {
+                const type = match[1].toLowerCase(); // Ensure type is lowercase (e.g., "track", "album")
+                const id = match[2];   // The 22-character Spotify ID
+                const spotifyUrl = `spotify:${type}:${id}`;
 
-                // Provide some feedback to the user before redirecting
-                document.write(
-                    '<h1>Redirecting...</h1>' +
-                    '<p>Attempting to open Spotify for album: <strong>' + albumId + '</strong></p>' +
-                    '<p>If you are not redirected automatically, <a href="' + spotifyUrl + '">click here</a>.</p>' +
-                    '<p>Target URL: <code>' + spotifyUrl + '</code></p>'
-                );
+                container.innerHTML =
+                    '<h1>Redirecting to Spotify...</h1>' +
+                    '<p>Attempting to open: <strong>' + type + ':' + id + '</strong> in Spotify.</p>' +
+                    '<p>Target URL: <code>' + spotifyUrl + '</code></p>' +
+                    '<p>If Spotify does not open automatically, <a href="' + spotifyUrl + '">click here to open it manually</a>.</p>' +
+                    '<p>This page will attempt to close shortly. You may also close this tab yourself once Spotify opens.</p>';
 
-                // Perform the redirect
+                // Perform the redirect to the Spotify app
                 window.location.href = spotifyUrl;
+
+                // Attempt to close the window after a short delay.
+                // IMPORTANT: This has a very low chance of working in modern browsers
+                // due to security policies. Scripts can typically only close windows
+                // they themselves opened via `window.open()`.
+                // If it doesn't work, the tab will simply remain open, which is an acceptable fallback.
+                setTimeout(function() {
+                    // Check if the window is still open and not already closed by the user or other means
+                    if (window.top && typeof window.top.close === 'function' && !window.top.closed) {
+                        window.top.close();
+                    }
+                    // Fallback for iframes or simpler scenarios, though less likely to work.
+                    else if (!window.closed) {
+                        window.close();
+                    }
+                }, 2000); // Delay of 2 seconds to allow the Spotify app to potentially open
+
             } else {
-                // This is a genuine 404 or a path that doesn't match our album pattern.
-                // You can customize this message.
-                document.write(
-                    '<h1>404 - Page Not Found</h1>' +
-                    '<p>The page you were looking for was not found.</p>' +
-                    '<p>If you were trying to open a Spotify album, the URL should be in the format: <code>.../album/ALBUM_ID</code></p>' +
-                    '<p>Current path: <code>' + path + '</code></p>' +
-                    '<p><a href="/">Go to homepage</a></p>' // Adjust link if your homepage isn't at the root
-                );
-                // You could also redirect to your site's homepage:
-                // window.location.href = '/your-repo-name/'; // Or just '/' if it's a user/org page
+                // This is a genuine 404 or a path that doesn't match our expected Spotify link pattern.
+                container.innerHTML =
+                    '<h1>404 - Page Not Found or Invalid Link</h1>' +
+                    '<p>The page you were looking for was not found, or the URL format is incorrect for a Spotify redirect.</p>' +
+                    '<p>The expected URL format is: <code>.../TYPE/ID</code></p>' +
+                    '<p>For example: <code>.../track/TRACK_ID</code> or <code>.../album/ALBUM_ID</code></p>' +
+                    '<p>Current path requested: <code>' + path + '</code></p>' +
+                    '<p><a href="/">Go to your site\'s homepage</a></p>';
+                    // If your GitHub Pages site is at the root of username.github.io, "/" is fine.
+                    // If it's a project page like username.github.io/my-repo/, you might want to link to "/my-repo/"
             }
         })();
     </script>
     <noscript>
-        <h1>JavaScript Required</h1>
-        <p>This page uses JavaScript to redirect you to Spotify. Please enable JavaScript in your browser.</p>
-        <p>If you were trying to open a Spotify album, please ensure your URL is in the format: <code>.../album/ALBUM_ID</code></p>
+        <div class="container">
+            <h1>JavaScript Required</h1>
+            <p>This page uses JavaScript to redirect you to Spotify. Please enable JavaScript in your browser and try again.</p>
+            <p>The expected URL format for Spotify links is: <code>.../TYPE/ID</code> (e.g., <code>.../track/TRACK_ID</code>)</p>
+        </div>
     </noscript>
-</head>
-<body>
-    <!-- Content is generated by JavaScript. If JS is disabled, the noscript tag's content will be more prominent. -->
-    <!-- You can put a simple loading message here if you prefer it over document.write -->
-    <p>Processing request...</p>
 </body>
 </html>
